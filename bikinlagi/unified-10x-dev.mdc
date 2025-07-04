@@ -1,0 +1,130 @@
+---
+alwaysApply: true
+---
+# Cursor Rules - Optimized for Performance & Effectiveness
+ 
+## Performance Optimization Principles
+ 
+### 1. Efficient Tool Usage
+- **Parallel Operations**: Always use parallel tool calls when gathering independent information
+- **Targeted Searches**: Use specific, focused queries rather than broad exploratory searches
+- **Minimal File Reads**: Read only necessary file sections (200-250 lines max per call)
+- **Smart Context Building**: Gather context progressively - start narrow, expand only if needed
+ 
+### 2. Response Optimization
+- **Concise Communication**: Provide direct, actionable responses without unnecessary elaboration
+- **Focus on Essentials**: Address the core request first, mention advanced options only if relevant
+- **Avoid Redundancy**: Don't repeat information already visible in the chat context
+ 
+### 3. Code Generation Strategy
+- **Surgical Edits**: Make precise, minimal changes rather than rewriting entire files
+- **Single-Purpose Changes**: One logical change per edit operation
+- **Prefer `search_replace` for large files (>2500 lines)**: More efficient than `edit_file`
+- **Avoid Speculative Code**: Only generate code that directly fulfills the request
+ 
+## Core Workflow Rules
+ 
+### Information Gathering
+1. **Start Specific**: Begin with targeted searches based on the user's exact need
+2. **Progressive Context**: Only expand search scope if initial results are insufficient
+3. **Essential Files Only**: Read files only when necessary for the task
+4. **Parallel Tool Execution**: Run multiple independent searches simultaneously
+ 
+### Code Modifications
+1. **Minimal Viable Changes**: Make the smallest change that achieves the goal
+2. **Single File Focus**: Complete work on one file before moving to another
+3. **Verify Before Proceeding**: Ensure each change is correct before additional modifications
+4. **Error-First Approach**: Fix critical errors before adding features
+ 
+### Communication Style
+1. **Lead with Action**: Start responses with what you're doing, not explanations
+2. **Bullet Point Plans**: Use concise lists for multi-step processes
+3. **Code Citations**: Use line number format `12:15:filename` for specific references
+4. **Essential Context Only**: Include only information directly relevant to the task
+ 
+## Specific Optimization Rules
+ 
+### File Operations
+```
+✅ DO: Read specific line ranges (start_line, end_line)
+✅ DO: Use parallel file reads for multiple files
+✅ DO: Use grep_search for finding specific patterns
+❌ AVOID: Reading entire large files unnecessarily
+❌ AVOID: Sequential file operations when parallel is possible
+```
+ 
+### Search Strategy
+```
+✅ DO: Specific semantic searches ("How does authentication work in this app?")
+✅ DO: Multiple parallel searches with different angles
+✅ DO: Use grep_search for exact text/pattern matches
+❌ AVOID: Overly broad searches ("tell me about this codebase")
+❌ AVOID: Repeated similar searches
+```
+ 
+### Code Changes
+```
+✅ DO: Use search_replace for targeted changes in large files
+✅ DO: Make atomic changes (one logical modification per operation)
+✅ DO: Test changes incrementally
+❌ AVOID: Large-scale refactoring without explicit request
+❌ AVOID: Creating new files unless absolutely necessary
+```
+ 
+### Response Structure
+```
+✅ DO: Start with immediate action (tool calls or direct answers)
+✅ DO: Provide implementation before explanation
+✅ DO: Use concise, scannable formatting
+❌ AVOID: Long explanations before taking action
+❌ AVOID: Verbose descriptions of what you're about to do
+```
+ 
+## Project-Specific Context
+ 
+### Technology Stack
+- **Framework**: Next.js 15 with App Router
+- **Styling**: Tailwind CSS with custom design system
+- **Components**: Custom UI components in `/components/ui/`
+- **Type Safety**: TypeScript throughout
+ 
+### Key Patterns
+- **File Structure**: App router structure in `/app/`
+- **Component Organization**: Layout components in `/components/layout/`
+- **Styling**: Utility-first with custom CSS variables
+- **Business Domain**: Industrial chemical dosing solutions (WRS Dosing)
+ 
+### Common Tasks Priority
+1. **UI/Component Development**: Focus on reusable, performant components
+2. **Page Implementation**: Business pages following established patterns
+3. **Styling Optimization**: Consistent design system application
+4. **Performance**: Core Web Vitals optimization
+5. **SEO**: Industrial B2B search optimization
+ 
+## Emergency Protocols
+ 
+### When CPU Usage is High
+1. **Reduce Tool Calls**: Combine operations where possible
+2. **Shorter Responses**: Focus on immediate actionables only
+3. **Defer Complex Operations**: Suggest breaking large tasks into smaller steps
+4. **Use More grep_search**: Instead of semantic search for known patterns
+ 
+### Quality Maintenance
+- **Core Functionality First**: Ensure basic requirements work before optimizations
+- **Incremental Validation**: Test each change before proceeding
+- **User Feedback Loop**: Confirm direction before extensive work
+- **Fallback to Manual**: If automated approaches fail, provide manual instructions
+ 
+## Success Metrics
+- ✅ Task completion in minimal tool calls
+- ✅ Precise, actionable responses
+- ✅ No unnecessary file operations
+- ✅ Parallel execution when possible
+- ✅ User can immediately apply suggestions
+ 
+## Task Prioritization
+1. **Critical Bugs**: Fix immediately with minimal scope
+2. **Core Features**: Implement efficiently with established patterns
+3. **Enhancements**: Suggest lightweight alternatives
+4. **Documentation**: Only when explicitly requested
+5. **Refactoring**: Only when it directly solves current issues 
