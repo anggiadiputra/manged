@@ -12,15 +12,32 @@ CREATE TABLE IF NOT EXISTS public.staff (
     last_login TIMESTAMPTZ
 );
 
+-- Settings table for global configuration
+CREATE TABLE IF NOT EXISTS public.settings (
+    key TEXT PRIMARY KEY,
+    value JSONB NOT NULL,
+    description TEXT,
+    updated_by UUID REFERENCES public.staff(id),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Create domains table
 CREATE TABLE IF NOT EXISTS public.domains (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    domain_id TEXT,
     name TEXT UNIQUE NOT NULL,
     registrar TEXT,
-    whois_data JSONB,
-    expiry_date DATE,
+    created_on TIMESTAMPTZ,
+    last_update_on TIMESTAMPTZ,
+    expiry_date TIMESTAMPTZ,
+    status TEXT,
+    nameserver_1 TEXT,
+    nameserver_2 TEXT,
+    nameserver_3 TEXT,
+    nameserver_4 TEXT,
+    dnssec TEXT,
     renewal_cost DECIMAL(10, 2),
-    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'expired', 'pending')),
+    note TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW(),
     created_by UUID REFERENCES public.staff(id)
@@ -131,7 +148,8 @@ CREATE TRIGGER update_websites_updated_at BEFORE UPDATE ON public.websites
 CREATE TRIGGER update_staff_updated_at BEFORE UPDATE ON public.staff
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
--- Create view for expiring assets (30 days)
+-- Place all CREATE VIEW statements after all tables are created
+
 CREATE OR REPLACE VIEW expiring_assets AS
 SELECT 
     'domain' as asset_type,
@@ -139,7 +157,7 @@ SELECT
     name as asset_name,
     expiry_date,
     renewal_cost,
-    (expiry_date - CURRENT_DATE) as days_until_expiry
+    (expiry_date::date - CURRENT_DATE) as days_until_expiry
 FROM public.domains
 WHERE expiry_date <= CURRENT_DATE + INTERVAL '30 days'
     AND expiry_date >= CURRENT_DATE
@@ -151,7 +169,7 @@ SELECT
     provider || ' - ' || package as asset_name,
     expiry_date,
     renewal_cost,
-    (expiry_date - CURRENT_DATE) as days_until_expiry
+    (expiry_date::date - CURRENT_DATE) as days_until_expiry
 FROM public.hosting
 WHERE expiry_date <= CURRENT_DATE + INTERVAL '30 days'
     AND expiry_date >= CURRENT_DATE
@@ -163,7 +181,7 @@ SELECT
     provider || ' - ' || ip_address as asset_name,
     expiry_date,
     renewal_cost,
-    (expiry_date - CURRENT_DATE) as days_until_expiry
+    (expiry_date::date - CURRENT_DATE) as days_until_expiry
 FROM public.vps
 WHERE expiry_date <= CURRENT_DATE + INTERVAL '30 days'
     AND expiry_date >= CURRENT_DATE
@@ -175,7 +193,7 @@ SELECT
     domain as asset_name,
     expiry_date,
     renewal_cost,
-    (expiry_date - CURRENT_DATE) as days_until_expiry
+    (expiry_date::date - CURRENT_DATE) as days_until_expiry
 FROM public.websites
 WHERE expiry_date <= CURRENT_DATE + INTERVAL '30 days'
     AND expiry_date >= CURRENT_DATE

@@ -32,7 +32,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
-import { canManageAssets, UserRole } from '@/lib/auth'
+import { canManageAssets, UserRole } from '@/lib/auth-utils'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -181,7 +181,7 @@ export function HostingTable({ hosting, userRole }: HostingTableProps) {
                       }
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStatusColor(item.status) as any}>
+                      <Badge variant={getStatusColor(item.status) as 'default' | 'destructive' | 'secondary' | 'outline'}>
                         {item.status === 'active' && 'Aktif'}
                         {item.status === 'expired' && 'Kedaluwarsa'}
                         {item.status === 'pending' && 'Pending'}

@@ -8,7 +8,7 @@ import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { createClient } from '@/lib/supabase/client'
@@ -18,18 +18,14 @@ import { format } from 'date-fns'
 
 const formSchema = z.object({
   name: z.string().min(1, 'Nama domain harus diisi'),
-  registrar: z.string().optional(),
-  expiry_date: z.string().optional(),
-  renewal_cost: z.string().optional(),
-  status: z.enum(['active', 'expired', 'pending']),
+  renewal_cost: z.string().min(1, 'Biaya perpanjangan harus diisi'),
+  note: z.string().optional(),
 })
 
 type FormData = z.infer<typeof formSchema>
 
-export function AddDomainForm() {
+export function AddDomainForm({ onSuccess }: { onSuccess?: () => void }) {
   const [loading, setLoading] = useState(false)
-  const [checkingWhois, setCheckingWhois] = useState(false)
-  const [whoisData, setWhoisData] = useState<any>(null)
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createClient()
@@ -37,104 +33,88 @@ export function AddDomainForm() {
   const {
     register,
     handleSubmit,
-    setValue,
     watch,
     formState: { errors },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      status: 'active',
-    },
   })
-
-  const domainName = watch('name')
-
-  const checkWhois = async () => {
-    if (!domainName) {
-      toast({
-        title: 'Error',
-        description: 'Masukkan nama domain terlebih dahulu',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    setCheckingWhois(true)
-    try {
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_WHOIS_API_URL}?domain=${domainName}`
-      )
-      
-      if (response.data) {
-        setWhoisData(response.data)
-        
-        // Auto-fill form with WHOIS data
-        if (response.data.registrar) {
-          setValue('registrar', response.data.registrar)
-        }
-        
-        if (response.data.expiry_date) {
-          const expiryDate = new Date(response.data.expiry_date)
-          setValue('expiry_date', format(expiryDate, 'yyyy-MM-dd'))
-        }
-        
-        toast({
-          title: 'Berhasil',
-          description: 'Data WHOIS berhasil diambil',
-        })
-      }
-    } catch (error) {
-      console.error('WHOIS error:', error)
-      toast({
-        title: 'Error',
-        description: 'Gagal mengambil data WHOIS',
-        variant: 'destructive',
-      })
-    } finally {
-      setCheckingWhois(false)
-    }
-  }
 
   const onSubmit = async (data: FormData) => {
     setLoading(true)
-
     try {
+      // 1. Fetch WHOIS data
+      const whoisRes = await fetch(`/api/whois?domain=${data.name}`)
+      const whoisJson = await whoisRes.json()
+      if (!whoisJson.success || !whoisJson.data) {
+        toast({
+          title: 'Error',
+          description: 'Gagal mengambil data WHOIS',
+          variant: 'destructive',
+        })
+        setLoading(false)
+        return
+      }
+      const whois = whoisJson.data
+      // 2. Map WHOIS fields
+      const registrar = whois['Registrar Name'] || null
+      const expiryDate = whois['Expiration Date']
+        ? whois['Expiration Date'].slice(0, 10)
+        : null
+      const nameserver_1 = whois['Nameserver 1'] || null
+      const nameserver_2 = whois['Nameserver 2'] || null
+
+      // 2.5. Check for duplicate domain
+      const { data: existing } = await supabase
+        .from('domains')
+        .select('id')
+        .eq('name', data.name)
+        .single();
+      if (existing) {
+        toast({
+          title: 'Error',
+          description: 'Domain sudah terdaftar.',
+          variant: 'destructive',
+        });
+        setLoading(false);
+        return;
+      }
+
+      // 3. Insert into Supabase
       const { data: userData } = await supabase.auth.getUser()
-      
       const { error } = await supabase.from('domains').insert({
+        domain_id: whois['Domain ID'] || null,
         name: data.name,
-        registrar: data.registrar || null,
-        whois_data: whoisData,
-        expiry_date: data.expiry_date || null,
+        registrar,
+        created_on: whois['Created On'] ? new Date(whois['Created On']).toISOString() : null,
+        last_update_on: whois['Last Update On'] ? new Date(whois['Last Update On']).toISOString() : null,
+        expiry_date: expiryDate,
+        status: whois['Status'] || null,
+        nameserver_1,
+        nameserver_2,
+        nameserver_3: whois['Nameserver 3'] || null,
+        nameserver_4: whois['Nameserver 4'] || null,
+        dnssec: whois['DNSSEC'] || null,
         renewal_cost: data.renewal_cost ? parseFloat(data.renewal_cost) : null,
-        status: data.status,
+        note: data.note || null,
         created_by: userData.user?.id,
       })
-
       if (error) {
         toast({
           title: 'Error',
           description: error.message,
           variant: 'destructive',
         })
+        setLoading(false)
         return
       }
-
-      // Log activity
-      await supabase.rpc('log_activity', {
-        p_action: 'create',
-        p_entity_type: 'domain',
-        p_details: { domain_name: data.name }
-      })
-
       toast({
         title: 'Berhasil',
         description: 'Domain berhasil ditambahkan',
       })
-
+      onSuccess?.()
       router.push('/dashboard/domains')
       router.refresh()
-    } catch (error) {
+    } catch (err) {
       toast({
         title: 'Error',
         description: 'Terjadi kesalahan saat menambahkan domain',
@@ -149,51 +129,16 @@ export function AddDomainForm() {
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
         <Label htmlFor="name">Nama Domain</Label>
-        <div className="flex gap-2 mt-1">
-          <Input
-            id="name"
-            placeholder="contoh.com"
-            {...register('name')}
-            disabled={loading}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={checkWhois}
-            disabled={loading || checkingWhois}
-          >
-            {checkingWhois ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Search className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
+        <Input
+          id="name"
+          placeholder="contoh.com"
+          {...register('name')}
+          disabled={loading}
+        />
         {errors.name && (
           <p className="text-sm text-red-600 mt-1">{errors.name.message}</p>
         )}
       </div>
-
-      <div>
-        <Label htmlFor="registrar">Registrar</Label>
-        <Input
-          id="registrar"
-          placeholder="Nama registrar"
-          {...register('registrar')}
-          disabled={loading}
-        />
-      </div>
-
-      <div>
-        <Label htmlFor="expiry_date">Tanggal Kedaluwarsa</Label>
-        <Input
-          id="expiry_date"
-          type="date"
-          {...register('expiry_date')}
-          disabled={loading}
-        />
-      </div>
-
       <div>
         <Label htmlFor="renewal_cost">Biaya Perpanjangan (Rp)</Label>
         <Input
@@ -203,35 +148,19 @@ export function AddDomainForm() {
           {...register('renewal_cost')}
           disabled={loading}
         />
+        {errors.renewal_cost && (
+          <p className="text-sm text-red-600 mt-1">{errors.renewal_cost.message}</p>
+        )}
       </div>
-
       <div>
-        <Label htmlFor="status">Status</Label>
-        <Select
-          value={watch('status')}
-          onValueChange={(value) => setValue('status', value as any)}
+        <Label htmlFor="note">Catatan</Label>
+        <Input
+          id="note"
+          placeholder="Catatan opsional"
+          {...register('note')}
           disabled={loading}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="active">Aktif</SelectItem>
-            <SelectItem value="expired">Kedaluwarsa</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-          </SelectContent>
-        </Select>
+        />
       </div>
-
-      {whoisData && (
-        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-          <h4 className="font-medium mb-2">Data WHOIS</h4>
-          <pre className="text-xs overflow-x-auto">
-            {JSON.stringify(whoisData, null, 2)}
-          </pre>
-        </div>
-      )}
-
       <div className="flex gap-2 pt-4">
         <Button type="submit" disabled={loading}>
           {loading ? (

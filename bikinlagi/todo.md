@@ -80,20 +80,19 @@
 ## 🌐 Domain Management Module
 
 ### Domain CRUD Operations
+- [x] **Add Domain: Minimal user input (domain, renewal cost, note). All technical details (registrar, expiry, nameservers, etc.) are fetched automatically from WHOIS and saved.**
+- [x] **Accurate WHOIS info: Always up-to-date and consistent with registry.**
+- [x] **Easy reporting: Can filter/search by registrar, expiry, nameservers, etc.**
 - [ ] Create domain list page with DataTable
 - [ ] Implement domain search functionality
 - [ ] Add domain filters (expiring, status, etc.)
-- [ ] Create "Add Domain" form
-  - [ ] Integrate Whois API (https://get.indexof.id/api/whois?domain={domain})
-  - [ ] Auto-populate domain data from API
-  - [ ] Manual input for additional fields
 - [ ] Create domain detail/view page
 - [ ] Implement edit domain functionality
 - [ ] Add delete domain with confirmation
 - [ ] Create domain import/export feature
 
 ### Domain-specific Features
-- [ ] Parse and display Whois data
+- [ ] Parse and display Whois data (now automatic)
 - [ ] Create domain expiry countdown
 - [ ] Add domain renewal history tracking
 - [ ] Implement bulk domain operations

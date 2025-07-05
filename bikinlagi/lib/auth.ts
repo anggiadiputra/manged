@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { Database } from '@/types/database'
 
-export type UserRole = 'super_admin' | 'admin_web' | 'finance'
+import { UserRole } from './auth-utils'
+
+export type { UserRole } from './auth-utils'
+export { canManageStaff, canManageAssets, canUpdateWhois } from './auth-utils'
 
 export interface User {
   id: string
@@ -24,13 +26,28 @@ export async function getUser(): Promise<User | null> {
     .eq('id', user.id)
     .single()
   
-  if (!staffData) return null
+  let staff = staffData
+
+  if (!staff) {
+    // Fallback: find by email in case staff record has not been synced with auth.uid yet
+    const { data: staffByEmail } = await supabase
+      .from('staff')
+      .select('*')
+      .eq('email', user.email)
+      .single()
+
+    if (staffByEmail) {
+      staff = staffByEmail
+    } else {
+      return null
+    }
+  }
   
   return {
-    id: staffData.id,
-    email: staffData.email,
-    name: staffData.name,
-    role: staffData.role as UserRole
+    id: staff.id,
+    email: staff.email,
+    name: staff.name,
+    role: staff.role as UserRole,
   }
 }
 
@@ -44,14 +61,4 @@ export async function requireAuth() {
   return user
 }
 
-export function canManageStaff(role: UserRole): boolean {
-  return role === 'super_admin'
-}
-
-export function canManageAssets(role: UserRole): boolean {
-  return role === 'super_admin' || role === 'admin_web'
-}
-
-export function canUpdateWhois(role: UserRole): boolean {
-  return role === 'finance' || canManageAssets(role)
-} 
+ 

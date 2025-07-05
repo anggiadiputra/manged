@@ -6,6 +6,19 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export interface Website {
+  id: string;
+  name: string;
+  url: string;
+  description?: string;
+  hosting_provider?: string;
+  status: 'active' | 'inactive' | 'maintenance';
+  expiry_date?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export type Database = {
   public: {
     Tables: {

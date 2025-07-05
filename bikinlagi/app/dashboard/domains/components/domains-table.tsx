@@ -33,7 +33,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
-import { canManageAssets, canUpdateWhois, UserRole } from '@/lib/auth'
+import { canManageAssets, canUpdateWhois, UserRole } from '@/lib/auth-utils'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,16 +44,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 
 interface Domain {
   id: string
+  domain_id?: string | null
   name: string
-  registrar: string | null
-  expiry_date: string | null
-  renewal_cost: number | null
-  status: string
+  registrar?: string | null
+  created_on?: string | null
+  last_update_on?: string | null
+  expiry_date?: string | null
+  status?: string | null
+  nameserver_1?: string | null
+  nameserver_2?: string | null
+  nameserver_3?: string | null
+  nameserver_4?: string | null
+  dnssec?: string | null
+  renewal_cost?: number | null
+  note?: string | null
   created_at: string
   updated_at: string
+  created_by?: string | null
+  created_by_name?: string | null
 }
 
 interface DomainsTableProps {
@@ -64,6 +76,8 @@ interface DomainsTableProps {
 export function DomainsTable({ domains, userRole }: DomainsTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [selectedDomain, setSelectedDomain] = useState<Domain | null>(null)
+  const [whoisLoading, setWhoisLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createClient()
@@ -120,6 +134,50 @@ export function DomainsTable({ domains, userRole }: DomainsTableProps) {
     return days
   }
 
+  const getStatusBadgeVariant = (status: string, daysUntilExpiry: number | null) => {
+    if (status === 'expired' || (daysUntilExpiry !== null && daysUntilExpiry <= 0)) {
+      return 'destructive'; // merah
+    }
+    if (daysUntilExpiry !== null && daysUntilExpiry <= 30) {
+      return 'soon'; // kuning (custom, will use className)
+    }
+    if (status === 'active') {
+      return 'default'; // hijau/default
+    }
+    return 'outline';
+  };
+
+  async function handleUpdateWhois(domain: Domain) {
+    setWhoisLoading(true)
+    try {
+      const res = await fetch(`/api/whois?domain=${domain.name}`)
+      const whoisJson = await res.json()
+      if (!whoisJson.success || !whoisJson.data) throw new Error('Gagal fetch WHOIS')
+      const whois = whoisJson.data
+      const { error } = await supabase.from('domains').update({
+        domain_id: whois['Domain ID'] || null,
+        registrar: whois['Registrar Name'] || null,
+        created_on: whois['Created On'] ? new Date(whois['Created On']).toISOString() : null,
+        last_update_on: whois['Last Update On'] ? new Date(whois['Last Update On']).toISOString() : null,
+        expiry_date: whois['Expiration Date'] ? whois['Expiration Date'].slice(0, 10) : null,
+        status: whois['Status'] || null,
+        nameserver_1: whois['Nameserver 1'] || null,
+        nameserver_2: whois['Nameserver 2'] || null,
+        nameserver_3: whois['Nameserver 3'] || null,
+        nameserver_4: whois['Nameserver 4'] || null,
+        dnssec: whois['DNSSEC'] || null,
+      }).eq('id', domain.id)
+      if (error) throw error
+      toast({ title: 'Berhasil', description: 'Data WHOIS berhasil diperbarui' })
+      setSelectedDomain(null)
+      router.refresh()
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' })
+    } finally {
+      setWhoisLoading(false)
+    }
+  }
+
   return (
     <>
       <div className="mb-4">
@@ -160,7 +218,13 @@ export function DomainsTable({ domains, userRole }: DomainsTableProps) {
                   <TableRow key={domain.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
-                        {domain.name}
+                        <button
+                          type="button"
+                          className="text-blue-600 underline hover:text-blue-800"
+                          onClick={() => setSelectedDomain(domain)}
+                        >
+                          {domain.name}
+                        </button>
                         <a 
                           href={`https://${domain.name}`} 
                           target="_blank" 
@@ -191,11 +255,22 @@ export function DomainsTable({ domains, userRole }: DomainsTableProps) {
                       }
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStatusColor(domain.status) as any}>
-                        {domain.status === 'active' && 'Aktif'}
-                        {domain.status === 'expired' && 'Kedaluwarsa'}
-                        {domain.status === 'pending' && 'Pending'}
-                      </Badge>
+                      {(() => {
+                        const daysUntilExpiry = getDaysUntilExpiry(domain.expiry_date);
+                        const badgeVariant = getStatusBadgeVariant(domain.status, daysUntilExpiry);
+                        let badgeClass = '';
+                        if (badgeVariant === 'soon') {
+                          badgeClass = 'bg-yellow-400 text-black';
+                        }
+                        if (badgeVariant === 'destructive') {
+                          badgeClass = 'bg-red-600 text-white';
+                        }
+                        return (
+                          <Badge variant={badgeVariant === 'soon' ? 'outline' : badgeVariant as any} className={badgeClass}>
+                            {badgeVariant === 'destructive' ? 'Expired' : badgeVariant === 'soon' ? 'Soon' : 'Aktif'}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -252,6 +327,47 @@ export function DomainsTable({ domains, userRole }: DomainsTableProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!selectedDomain} onOpenChange={() => setSelectedDomain(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Detail Domain</DialogTitle>
+            <DialogDescription>
+              {selectedDomain && (
+                <div className="space-y-2 text-left">
+                  <div><strong>Domain ID:</strong> {selectedDomain.domain_id || '-'}</div>
+                  <div><strong>Nama:</strong> {selectedDomain.name}</div>
+                  <div><strong>Registrar:</strong> {selectedDomain.registrar || '-'}</div>
+                  <div><strong>Dibuat Pada:</strong> {selectedDomain.created_on ? format(new Date(selectedDomain.created_on ?? ''), 'dd MMM yyyy HH:mm', { locale: id }) : '-'}</div>
+                  <div><strong>Update Terakhir:</strong> {selectedDomain.last_update_on ? format(new Date(selectedDomain.last_update_on ?? ''), 'dd MMM yyyy HH:mm', { locale: id }) : '-'}</div>
+                  <div><strong>Tanggal Kedaluwarsa:</strong> {selectedDomain.expiry_date ? format(new Date(selectedDomain.expiry_date ?? ''), 'dd MMM yyyy', { locale: id }) : '-'}</div>
+                  <div><strong>Status:</strong> {selectedDomain.status || '-'}</div>
+                  <div><strong>Nameserver 1:</strong> {selectedDomain.nameserver_1 || '-'}</div>
+                  <div><strong>Nameserver 2:</strong> {selectedDomain.nameserver_2 || '-'}</div>
+                  <div><strong>Nameserver 3:</strong> {selectedDomain.nameserver_3 || '-'}</div>
+                  <div><strong>Nameserver 4:</strong> {selectedDomain.nameserver_4 || '-'}</div>
+                  <div><strong>DNSSEC:</strong> {selectedDomain.dnssec || '-'}</div>
+                  <div><strong>Biaya Perpanjangan:</strong> {selectedDomain.renewal_cost ? `Rp ${selectedDomain.renewal_cost.toLocaleString('id-ID')}` : '-'}</div>
+                  <div><strong>Catatan:</strong> {selectedDomain.note || '-'}</div>
+                  <div><strong>Diupdate:</strong> {selectedDomain.updated_at ? format(new Date(selectedDomain.updated_at ?? ''), 'dd MMM yyyy HH:mm', { locale: id }) : '-'}</div>
+                  <div><strong>Oleh:</strong> {selectedDomain.created_by_name || '-'}</div>
+                  {canEditWhois && (
+                    <div className="pt-4">
+                      <Button
+                        onClick={() => handleUpdateWhois(selectedDomain)}
+                        disabled={whoisLoading}
+                        variant="secondary"
+                      >
+                        {whoisLoading ? 'Memperbarui...' : 'Update WHOIS'}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </>
   )
 } 

@@ -11,7 +11,7 @@ async function getDomains() {
   
   const { data: domains, error } = await supabase
     .from('domains')
-    .select('*')
+    .select('*, staff:created_by(name)')
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -19,7 +19,11 @@ async function getDomains() {
     return []
   }
 
-  return domains || []
+  // Map staff.name to created_by_name for each domain
+  return (domains || []).map((d) => ({
+    ...d,
+    created_by_name: d.staff?.name || '-',
+  }))
 }
 
 export default async function DomainsPage() {

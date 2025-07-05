@@ -11,19 +11,19 @@ const users = [
   {
     email: 'support@indexof.id',
     password: 'SuperAdmin123!',
-    name: 'Super Admin User',
+    name: 'Super Admin',
     role: 'super_admin'
   },
   {
     email: 'anggiadiputra@yahoo.com',
     password: 'AdminWeb123!',
-    name: 'Admin Web User',
+    name: 'Admin Web',
     role: 'admin_web'
   },
   {
     email: 'no-reply@indexof.id',
     password: 'Finance123!',
-    name: 'Finance User',
+    name: 'Finance',
     role: 'finance'
   }
 ]
@@ -31,51 +31,47 @@ const users = [
 async function createUsers() {
   console.log('🚀 Starting user creation process...\n')
 
-  for (const userData of users) {
+  for (const user of users) {
     try {
-      console.log(`Creating user: ${userData.email}`)
+      console.log(`Creating user: ${user.email}`)
       
       // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: userData.email,
-        password: userData.password,
+      const { data, error } = await supabase.auth.admin.createUser({
+        email: user.email,
+        password: user.password,
         email_confirm: true, // Auto-confirm email
-        user_metadata: {
-          name: userData.name,
-          role: userData.role
-        }
       })
 
-      if (authError) {
-        console.error(`❌ Error creating auth user ${userData.email}:`, authError.message)
+      if (error) {
+        console.error(`❌ Error creating auth user for ${user.email}:`, error.message)
         continue
       }
 
-      console.log(`✅ Auth user created: ${userData.email} (ID: ${authData.user.id})`)
+      const userId = data.user.id
 
       // Insert user into staff table
       const { error: staffError } = await supabase
         .from('staff')
         .insert({
-          id: authData.user.id,
-          email: userData.email,
-          name: userData.name,
-          role: userData.role
+          id: userId,
+          email: user.email,
+          name: user.name,
+          role: user.role
         })
 
       if (staffError) {
-        console.error(`❌ Error inserting staff record for ${userData.email}:`, staffError.message)
+        console.error(`❌ Error inserting staff for ${user.email}:`, staffError.message)
         continue
       }
 
-      console.log(`✅ Staff record created for: ${userData.email}`)
-      console.log(`📧 Email: ${userData.email}`)
-      console.log(`🔑 Password: ${userData.password}`)
-      console.log(`👤 Role: ${userData.role}`)
+      console.log(`✅ Created user and staff: ${user.email} (${user.role})`)
+      console.log(`📧 Email: ${user.email}`)
+      console.log(`🔑 Password: ${user.password}`)
+      console.log(`�� Role: ${user.role}`)
       console.log('---')
 
     } catch (error) {
-      console.error(`❌ Unexpected error for ${userData.email}:`, error.message)
+      console.error(`❌ Unexpected error for ${user.email}:`, error.message)
     }
   }
 
@@ -88,4 +84,10 @@ async function createUsers() {
 }
 
 // Run the script
-createUsers().catch(console.error) 
+createUsers().then(() => {
+  console.log('Done!')
+  process.exit(0)
+}).catch((err) => {
+  console.error('Fatal error:', err)
+  process.exit(1)
+}) 

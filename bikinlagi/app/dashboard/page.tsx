@@ -6,6 +6,24 @@ import { Globe, Server, HardDrive, Layout, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
 
+interface ExpiringAsset {
+  asset_type: string
+  id: string
+  asset_name: string
+  expiry_date: string
+  days_until_expiry: number
+}
+
+interface RecentActivity {
+  id: string
+  action: string
+  entity_type: string
+  created_at: string
+  staff?: {
+    name: string
+  }
+}
+
 async function getDashboardStats() {
   const supabase = await createClient()
   
@@ -107,7 +125,7 @@ export default async function DashboardPage() {
         <CardContent>
           {expiringAssets && expiringAssets.length > 0 ? (
             <div className="space-y-2">
-              {expiringAssets.map((asset: any) => (
+              {expiringAssets.map((asset: ExpiringAsset) => (
                 <div 
                   key={`${asset.asset_type}-${asset.id}`}
                   className="flex items-center justify-between p-3 border rounded-lg"
@@ -153,7 +171,7 @@ export default async function DashboardPage() {
         <CardContent>
           {recentActivities && recentActivities.length > 0 ? (
             <div className="space-y-2">
-              {recentActivities.map((activity: any) => (
+              {recentActivities.map((activity: RecentActivity) => (
                 <div 
                   key={activity.id}
                   className="flex items-center justify-between py-2 border-b last:border-0"
