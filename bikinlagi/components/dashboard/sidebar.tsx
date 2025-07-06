@@ -10,7 +10,8 @@ import {
   Layout, 
   Users, 
   LogOut,
-  Home
+  Home,
+  Settings as SettingsIcon
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -37,6 +38,7 @@ export function Sidebar({ userRole }: SidebarProps) {
 
   if (userRole === 'super_admin') {
     navigation.push({ name: 'Staff', href: '/dashboard/staff', icon: Users })
+    navigation.push({ name: 'Settings', href: '/dashboard/settings', icon: SettingsIcon })
   }
 
   const handleLogout = async () => {
