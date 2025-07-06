@@ -332,39 +332,37 @@ export function DomainsTable({ domains, userRole }: DomainsTableProps) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Detail Domain</DialogTitle>
-            <DialogDescription>
-              {selectedDomain && (
-                <div className="space-y-2 text-left">
-                  <div><strong>Domain ID:</strong> {selectedDomain.domain_id || '-'}</div>
-                  <div><strong>Nama:</strong> {selectedDomain.name}</div>
-                  <div><strong>Registrar:</strong> {selectedDomain.registrar || '-'}</div>
-                  <div><strong>Dibuat Pada:</strong> {selectedDomain.created_on ? format(new Date(selectedDomain.created_on ?? ''), 'dd MMM yyyy HH:mm', { locale: id }) : '-'}</div>
-                  <div><strong>Update Terakhir:</strong> {selectedDomain.last_update_on ? format(new Date(selectedDomain.last_update_on ?? ''), 'dd MMM yyyy HH:mm', { locale: id }) : '-'}</div>
-                  <div><strong>Tanggal Kedaluwarsa:</strong> {selectedDomain.expiry_date ? format(new Date(selectedDomain.expiry_date ?? ''), 'dd MMM yyyy', { locale: id }) : '-'}</div>
-                  <div><strong>Status:</strong> {selectedDomain.status || '-'}</div>
-                  <div><strong>Nameserver 1:</strong> {selectedDomain.nameserver_1 || '-'}</div>
-                  <div><strong>Nameserver 2:</strong> {selectedDomain.nameserver_2 || '-'}</div>
-                  <div><strong>Nameserver 3:</strong> {selectedDomain.nameserver_3 || '-'}</div>
-                  <div><strong>Nameserver 4:</strong> {selectedDomain.nameserver_4 || '-'}</div>
-                  <div><strong>DNSSEC:</strong> {selectedDomain.dnssec || '-'}</div>
-                  <div><strong>Biaya Perpanjangan:</strong> {selectedDomain.renewal_cost ? `Rp ${selectedDomain.renewal_cost.toLocaleString('id-ID')}` : '-'}</div>
-                  <div><strong>Catatan:</strong> {selectedDomain.note || '-'}</div>
-                  <div><strong>Diupdate:</strong> {selectedDomain.updated_at ? format(new Date(selectedDomain.updated_at ?? ''), 'dd MMM yyyy HH:mm', { locale: id }) : '-'}</div>
-                  <div><strong>Oleh:</strong> {selectedDomain.created_by_name || '-'}</div>
-                  {canEditWhois && (
-                    <div className="pt-4">
-                      <Button
-                        onClick={() => handleUpdateWhois(selectedDomain)}
-                        disabled={whoisLoading}
-                        variant="secondary"
-                      >
-                        {whoisLoading ? 'Memperbarui...' : 'Update WHOIS'}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </DialogDescription>
+            {selectedDomain && (
+              <div className="space-y-2 text-left text-sm text-muted-foreground">
+                <div><strong>Domain ID:</strong> {selectedDomain.domain_id || '-'}</div>
+                <div><strong>Nama:</strong> {selectedDomain.name}</div>
+                <div><strong>Registrar:</strong> {selectedDomain.registrar || '-'}</div>
+                <div><strong>Dibuat Pada:</strong> {selectedDomain.created_on ? format(new Date(selectedDomain.created_on ?? ''), 'dd MMM yyyy HH:mm', { locale: id }) : '-'}</div>
+                <div><strong>Update Terakhir:</strong> {selectedDomain.last_update_on ? format(new Date(selectedDomain.last_update_on ?? ''), 'dd MMM yyyy HH:mm', { locale: id }) : '-'}</div>
+                <div><strong>Tanggal Kedaluwarsa:</strong> {selectedDomain.expiry_date ? format(new Date(selectedDomain.expiry_date ?? ''), 'dd MMM yyyy', { locale: id }) : '-'}</div>
+                <div><strong>Status:</strong> {selectedDomain.status || '-'}</div>
+                <div><strong>Nameserver 1:</strong> {selectedDomain.nameserver_1 || '-'}</div>
+                <div><strong>Nameserver 2:</strong> {selectedDomain.nameserver_2 || '-'}</div>
+                <div><strong>Nameserver 3:</strong> {selectedDomain.nameserver_3 || '-'}</div>
+                <div><strong>Nameserver 4:</strong> {selectedDomain.nameserver_4 || '-'}</div>
+                <div><strong>DNSSEC:</strong> {selectedDomain.dnssec || '-'}</div>
+                <div><strong>Biaya Perpanjangan:</strong> {selectedDomain.renewal_cost ? `Rp ${selectedDomain.renewal_cost.toLocaleString('id-ID')}` : '-'}</div>
+                <div><strong>Catatan:</strong> {selectedDomain.note || '-'}</div>
+                <div><strong>Diupdate:</strong> {selectedDomain.updated_at ? format(new Date(selectedDomain.updated_at ?? ''), 'dd MMM yyyy HH:mm', { locale: id }) : '-'}</div>
+                <div><strong>Oleh:</strong> {selectedDomain.created_by_name || '-'}</div>
+                {canEditWhois && (
+                  <div className="pt-4">
+                    <Button
+                      onClick={() => handleUpdateWhois(selectedDomain)}
+                      disabled={whoisLoading}
+                      variant="secondary"
+                    >
+                      {whoisLoading ? 'Memperbarui...' : 'Update WHOIS'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </DialogHeader>
         </DialogContent>
       </Dialog>

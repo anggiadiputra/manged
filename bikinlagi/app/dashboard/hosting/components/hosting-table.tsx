@@ -38,11 +38,11 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { AddonDomainsDialog } from '@/components/dashboard/addon-domains-dialog'
 
 interface Hosting {
   id: string
@@ -64,6 +64,9 @@ interface HostingTableProps {
 export function HostingTable({ hosting, userRole }: HostingTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [addonHostingId, setAddonHostingId] = useState<string | null>(null)
+  const [addonDomains, setAddonDomains] = useState<any[]>([])
+  const [addonLoading, setAddonLoading] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createClient()
@@ -76,13 +79,11 @@ export function HostingTable({ hosting, userRole }: HostingTableProps) {
     item.primary_domain?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
-  const handleDelete = async () => {
-    if (!deleteId) return
-
+  const handleDelete = async (id: string) => {
     const { error } = await supabase
       .from('hosting')
       .delete()
-      .eq('id', deleteId)
+      .eq('id', id)
 
     if (error) {
       toast({
@@ -96,9 +97,8 @@ export function HostingTable({ hosting, userRole }: HostingTableProps) {
         description: 'Hosting berhasil dihapus',
       })
       router.refresh()
+      setDeleteId(null)
     }
-
-    setDeleteId(null)
   }
 
   const getStatusColor = (status: string) => {
@@ -118,6 +118,28 @@ export function HostingTable({ hosting, userRole }: HostingTableProps) {
     if (!expiryDate) return null
     const days = Math.ceil((new Date(expiryDate).getTime() - new Date().getTime()) / (1000 * 3600 * 24))
     return days
+  }
+
+  async function handleShowAddon(hostingId:string){
+    setAddonHostingId(hostingId);
+    setAddonLoading(true);
+    const { data, error } = await supabase
+      .from('domain_hosting')
+      .select('domain_id, domains(name)')
+      .eq('hosting_id', hostingId);
+    if(!error && data){
+      const names = data.map((d:any)=>({id:d.domain_id, name:d.domains?.name})).filter((d:any)=>d.name);
+      // fetch cms for each name
+      const cmsPromises = names.map(async (n:any)=>{
+        const { data: w } = await supabase.from('websites').select('cms').eq('domain', n.name).single();
+        return { ...n, cms: w?.cms || '-' };
+      });
+      const arr = await Promise.all(cmsPromises);
+      setAddonDomains(arr);
+    } else {
+      setAddonDomains([]);
+    }
+    setAddonLoading(false);
   }
 
   return (
@@ -144,13 +166,14 @@ export function HostingTable({ hosting, userRole }: HostingTableProps) {
               <TableHead>Tanggal Kedaluwarsa</TableHead>
               <TableHead>Biaya Perpanjangan</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Addon</TableHead>
               <TableHead className="w-[100px]">Aksi</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredHosting.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                   Tidak ada hosting ditemukan
                 </TableCell>
               </TableRow>
@@ -186,6 +209,11 @@ export function HostingTable({ hosting, userRole }: HostingTableProps) {
                         {item.status === 'expired' && 'Kedaluwarsa'}
                         {item.status === 'pending' && 'Pending'}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Button variant="outline" size="sm" onClick={()=>handleShowAddon(item.id)}>
+                        Lihat
+                      </Button>
                     </TableCell>
                     <TableCell>
                       {canManage && (
@@ -228,18 +256,27 @@ export function HostingTable({ hosting, userRole }: HostingTableProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tindakan ini tidak dapat dibatalkan. Hosting akan dihapus permanen dari sistem.
-            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Batal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>
+            <AlertDialogAction onClick={() => handleDelete(deleteId!)}>
               Hapus
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AddonDomainsDialog
+        open={!!addonHostingId}
+        onOpenChange={(o)=>{if(!o){setAddonHostingId(null); setAddonDomains([])}}}
+        loading={addonLoading}
+        domains={addonDomains}
+        onDelete={async (domainRelId:string)=>{
+          // domainRelId is domain_id
+          await supabase.from('domain_hosting').delete().eq('hosting_id', addonHostingId!).eq('domain_id', domainRelId);
+          setAddonDomains(prev=>prev.filter(d=>d.id!==domainRelId));
+        }}
+      />
     </>
   )
 } 

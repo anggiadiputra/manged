@@ -18,7 +18,9 @@ import {
   Trash2, 
   Search,
   Eye,
-  EyeOff
+  EyeOff,
+  Copy,
+  Check
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -68,7 +70,9 @@ interface VpsTableProps {
 export function VpsTable({ vps, userRole }: VpsTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({})
+  const [credVps, setCredVps] = useState<{ip:string,user:string,pass:string}|null>(null)
+  const [credLoading, setCredLoading] = useState(false)
+  const [copiedField, setCopiedField] = useState<string | null>(null)
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createClient()
@@ -77,8 +81,7 @@ export function VpsTable({ vps, userRole }: VpsTableProps) {
 
   const filteredVps = vps.filter(vpsItem =>
     vpsItem.provider.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vpsItem.ip_address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vpsItem.location?.toLowerCase().includes(searchTerm.toLowerCase())
+    vpsItem.ip_address.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   const handleDelete = async () => {
@@ -106,13 +109,6 @@ export function VpsTable({ vps, userRole }: VpsTableProps) {
     setDeleteId(null)
   }
 
-  const togglePasswordVisibility = (vpsId: string) => {
-    setShowPasswords(prev => ({
-      ...prev,
-      [vpsId]: !prev[vpsId]
-    }))
-  }
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
@@ -132,13 +128,20 @@ export function VpsTable({ vps, userRole }: VpsTableProps) {
     return days
   }
 
+  function handleCopy(text:string, field:string){
+    navigator.clipboard.writeText(text).then(()=>{
+      setCopiedField(field);
+      setTimeout(()=>setCopiedField(null),1500);
+    });
+  }
+
   return (
     <>
       <div className="mb-4">
         <div className="relative max-w-sm">
           <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Cari provider, IP, atau lokasi..."
+            placeholder="Cari provider atau IP..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-8"
@@ -152,8 +155,6 @@ export function VpsTable({ vps, userRole }: VpsTableProps) {
             <TableRow>
               <TableHead>Provider</TableHead>
               <TableHead>IP Address</TableHead>
-              <TableHead>Lokasi</TableHead>
-              <TableHead>Kredensial</TableHead>
               <TableHead>Tanggal Kedaluwarsa</TableHead>
               <TableHead>Biaya Perpanjangan</TableHead>
               <TableHead>Status</TableHead>
@@ -163,51 +164,31 @@ export function VpsTable({ vps, userRole }: VpsTableProps) {
           <TableBody>
             {filteredVps.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                <TableCell colSpan={6} className="text-center py-8 text-gray-500">
                   Tidak ada VPS ditemukan
                 </TableCell>
               </TableRow>
             ) : (
               filteredVps.map((vpsItem) => {
                 const daysUntilExpiry = getDaysUntilExpiry(vpsItem.expiry_date)
-                const isPasswordVisible = showPasswords[vpsItem.id]
                 
                 return (
                   <TableRow key={vpsItem.id}>
                     <TableCell className="font-medium">{vpsItem.provider}</TableCell>
                     <TableCell>
-                      <code className="bg-gray-100 px-2 py-1 rounded text-sm">
+                      <button type="button" className="underline text-blue-600 hover:text-blue-800" onClick={async()=>{
+                        setCredLoading(true);
+                        const { data } = await supabase.rpc('get_vps_credentials', { p_vps_id: vpsItem.id });
+                        if(data && data.length>0){
+                          const row = data[0];
+                          setCredVps({ ip: row.ip as string, user: row.root_user as string, pass: row.root_password as string });
+                        } else {
+                          setCredVps({ ip: vpsItem.ip_address, user: '-', pass: '-' });
+                        }
+                        setCredLoading(false);
+                      }}>
                         {vpsItem.ip_address}
-                      </code>
-                    </TableCell>
-                    <TableCell>{vpsItem.location || '-'}</TableCell>
-                    <TableCell>
-                      {vpsItem.root_user && vpsItem.root_password ? (
-                        <div className="space-y-1">
-                          <div className="text-sm">
-                            <span className="text-gray-600">User:</span> {vpsItem.root_user}
-                          </div>
-                          <div className="text-sm flex items-center gap-2">
-                            <span className="text-gray-600">Pass:</span>
-                            <code className="bg-gray-100 px-2 py-1 rounded text-xs">
-                              {isPasswordVisible ? vpsItem.root_password : '••••••••'}
-                            </code>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              onClick={() => togglePasswordVisibility(vpsItem.id)}
-                            >
-                              {isPasswordVisible ? (
-                                <EyeOff className="h-3 w-3" />
-                              ) : (
-                                <Eye className="h-3 w-3" />
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      ) : '-'}
+                      </button>
                     </TableCell>
                     <TableCell>
                       {vpsItem.expiry_date ? (
@@ -286,6 +267,35 @@ export function VpsTable({ vps, userRole }: VpsTableProps) {
             <AlertDialogAction onClick={handleDelete}>
               Hapus
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Credential modal */}
+      <AlertDialog open={!!credVps} onOpenChange={()=>setCredVps(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Kredensial VPS</AlertDialogTitle>
+          </AlertDialogHeader>
+          {credLoading ? (
+            <p className="text-sm text-muted-foreground">Memuat...</p>
+          ) : credVps && (
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <div><strong>IP:</strong> {credVps.ip}</div>
+              <div className="flex items-center gap-2"><strong>User:</strong> {credVps.user || '-'}
+                {credVps.user && credVps.user!== '-' && (
+                  <button onClick={()=>handleCopy(credVps.user,'user')} className="text-muted-foreground hover:text-primary">
+                    {copiedField==='user'? <Check className="w-4 h-4 text-green-600"/> : <Copy className="w-4 h-4"/>}
+                  </button>)}</div>
+              <div className="flex items-center gap-2"><strong>Password:</strong> {credVps.pass ? '••••••••' : '-'}
+                {credVps.pass && (
+                  <button onClick={()=>handleCopy(credVps.pass,'pass')} className="text-muted-foreground hover:text-primary">
+                    {copiedField==='pass'? <Check className="w-4 h-4 text-green-600"/> : <Copy className="w-4 h-4"/>}
+                  </button>)}</div>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={()=>setCredVps(null)}>Tutup</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

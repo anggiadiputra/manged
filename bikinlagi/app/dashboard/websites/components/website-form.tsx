@@ -27,9 +27,10 @@ type WebsiteFormValues = z.infer<typeof websiteSchema>;
 
 interface WebsiteFormProps {
   initialData?: Website;
+  onCancel?: () => void;
 }
 
-export function WebsiteForm({ initialData }: WebsiteFormProps) {
+export function WebsiteForm({ initialData, onCancel }: WebsiteFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   
@@ -186,9 +187,16 @@ export function WebsiteForm({ initialData }: WebsiteFormProps) {
           )}
         />
 
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving...' : initialData ? 'Update Website' : 'Create Website'}
-        </Button>
+        <div className="flex gap-2">
+          <Button type="submit" disabled={isLoading}>
+            {isLoading ? 'Menyimpan...' : initialData ? 'Perbarui Website' : 'Tambah Website'}
+          </Button>
+          {onCancel && (
+            <Button type="button" variant="outline" disabled={isLoading} onClick={onCancel}>
+              Batal
+            </Button>
+          )}
+        </div>
       </form>
     </Form>
   );
