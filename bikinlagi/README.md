@@ -130,10 +130,96 @@ npm run dev
 
 ## 🚀 Deployment
 
-1. Push code ke GitHub
-2. Connect repository ke Vercel
-3. Set environment variables di Vercel
-4. Deploy!
+### 1. Environment Variables
+
+Pastikan semua environment variables berikut tersedia di Vercel dashboard:
+
+```bash
+# Supabase Connection URLs
+POSTGRES_URL="postgres://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require&supa=base-pooler.x"
+POSTGRES_URL_NON_POOLING="postgres://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
+POSTGRES_PRISMA_URL="postgres://postgres.[PROJECT_REF]:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres?sslmode=require&pgbouncer=true"
+
+# Supabase Project Details
+POSTGRES_USER="postgres"
+POSTGRES_HOST="db.[PROJECT_REF].supabase.co"
+POSTGRES_PASSWORD="[PASSWORD]"
+POSTGRES_DATABASE="postgres"
+
+# Supabase API Configuration
+SUPABASE_URL="https://[PROJECT_REF].supabase.co"
+SUPABASE_ANON_KEY="[ANON_KEY]"
+NEXT_PUBLIC_SUPABASE_URL="https://[PROJECT_REF].supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="[ANON_KEY]"
+SUPABASE_SERVICE_ROLE_KEY="[SERVICE_ROLE_KEY]"
+SUPABASE_JWT_SECRET="[JWT_SECRET]"
+```
+
+### 2. Deploy dengan Vercel CLI
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Login ke Vercel
+vercel login
+
+# Deploy
+vercel
+
+# Deploy ke production
+vercel --prod
+```
+
+### 3. Deploy via GitHub
+
+1. Push kode ke GitHub repository
+2. Buka [Vercel Dashboard](https://vercel.com)
+3. Klik "New Project"
+4. Import repository dari GitHub
+5. Pilih framework "Next.js"
+6. Konfigurasi environment variables
+7. Klik "Deploy"
+
+### 4. Catatan Penting
+
+- Fitur backup database membutuhkan PostgreSQL client tools di environment production
+- Pastikan semua environment variables terisi dengan benar
+- Gunakan branch `main` atau `master` untuk production
+- Aktifkan "Automatically deploy" di Vercel untuk auto-deploy saat push ke main branch
+
+### 5. Troubleshooting
+
+Jika terjadi error saat deploy:
+
+1. Cek build log di Vercel dashboard
+2. Pastikan semua dependencies terinstall
+3. Verifikasi environment variables
+4. Cek koneksi ke Supabase
+5. Periksa log di Vercel deployment
+
+### 6. Monitoring
+
+- Setup Vercel Analytics untuk monitoring performa
+- Aktifkan notifikasi deployment di Vercel
+- Monitor error rate dan response time
+- Cek usage metrics di Supabase
+
+## Local Development
+
+```bash
+# Install dependencies
+npm install
+
+# Copy environment variables
+cp .env.example .env.local
+
+# Edit .env.local dengan kredensial yang sesuai
+nano .env.local
+
+# Run development server
+npm run dev
+```
 
 ## 📝 Catatan Pengembangan
 
