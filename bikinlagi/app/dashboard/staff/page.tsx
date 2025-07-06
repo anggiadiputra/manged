@@ -2,35 +2,44 @@ import { requireAuth, canManageStaff } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { StaffTable } from './components/staff-table'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
+import { Pagination } from '@/components/dashboard/pagination'
 
-async function getStaff() {
+const ITEMS_PER_PAGE = 10;
+
+async function getStaff(page: number) {
   const supabase = await createClient()
+  const from = (page - 1) * ITEMS_PER_PAGE;
+  const to = from + ITEMS_PER_PAGE - 1;
   
-  const { data: staff, error } = await supabase
+  const { data: staff, error, count } = await supabase
     .from('staff')
-    .select('*')
+    .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
+    .range(from, to)
 
   if (error) {
     console.error('Error fetching staff:', error)
-    return []
+    return { staff: [], totalCount: 0 }
   }
 
-  return staff || []
+  return { staff: staff || [], totalCount: count || 0 }
 }
 
-export default async function StaffPage() {
+export default async function StaffPage({ searchParams }: { searchParams: { page?: string } }) {
   const user = await requireAuth()
   
   if (!canManageStaff(user.role)) {
     redirect('/dashboard')
   }
 
-  const staff = await getStaff()
+  const page = Number(searchParams?.page || 1);
+  const { staff, totalCount } = await getStaff(page)
+
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-6">
@@ -51,12 +60,17 @@ export default async function StaffPage() {
         <CardHeader>
           <CardTitle>Daftar Staff</CardTitle>
           <CardDescription>
-            Total {staff.length} pengguna terdaftar
+            Total {totalCount} pengguna terdaftar
           </CardDescription>
         </CardHeader>
         <CardContent>
           <StaffTable staff={staff} currentUserId={user.id} />
         </CardContent>
+        {totalPages > 1 && (
+          <CardFooter>
+            <Pagination currentPage={page} totalPages={totalPages} />
+          </CardFooter>
+        )}
       </Card>
     </div>
   )

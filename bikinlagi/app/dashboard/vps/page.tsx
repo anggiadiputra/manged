@@ -1,31 +1,40 @@
 import { requireAuth, canManageAssets } from '@/lib/auth'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { VpsTable } from './components/vps-table'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'
+import { Pagination } from '@/components/dashboard/pagination'
 
-async function getVps() {
+const ITEMS_PER_PAGE = 10;
+
+async function getVps(page: number) {
   const supabase = await createClient()
-  
-  const { data: vps, error } = await supabase
+  const from = (page - 1) * ITEMS_PER_PAGE;
+  const to = from + ITEMS_PER_PAGE - 1;
+
+  const { data: vps, error, count } = await supabase
     .from('vps')
-    .select('*')
+    .select('*', { count: 'exact' })
     .order('created_at', { ascending: false })
+    .range(from, to)
 
   if (error) {
     console.error('Error fetching VPS:', error)
-    return []
+    return { vps: [], totalCount: 0 }
   }
 
-  return vps || []
+  return { vps: vps || [], totalCount: count || 0 }
 }
 
-export default async function VpsPage() {
+export default async function VpsPage({ searchParams }: { searchParams: { page?: string } }) {
   const user = await requireAuth()
   const canManage = canManageAssets(user.role)
-  const vps = await getVps()
+  const page = Number(searchParams?.page || 1);
+  const { vps, totalCount } = await getVps(page)
+
+  const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
 
   return (
     <div className="space-y-6">
@@ -48,12 +57,17 @@ export default async function VpsPage() {
         <CardHeader>
           <CardTitle>Daftar VPS</CardTitle>
           <CardDescription>
-            Total {vps.length} VPS terdaftar
+            Total {totalCount} VPS terdaftar
           </CardDescription>
         </CardHeader>
         <CardContent>
           <VpsTable vps={vps} userRole={user.role} />
         </CardContent>
+        {totalPages > 1 && (
+          <CardFooter>
+            <Pagination currentPage={page} totalPages={totalPages} />
+          </CardFooter>
+        )}
       </Card>
     </div>
   )
