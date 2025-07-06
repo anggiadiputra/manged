@@ -26,75 +26,63 @@ interface RecentActivity {
   }
 }
 
-async function getDashboardStats() {
-  const supabase = await createClient()
+async function getDashboardStats(client: any) {
+  const { data: totalDomains, error: domainError } = await client.rpc('total_domains_active')
   
-  const { data: stats } = await supabase
-    .from('dashboard_stats')
-    .select('*')
-    .single()
+  if (domainError) {
+    console.error('Error fetching total domains:', domainError)
+  }
+  console.log('Raw total domains data from RPC:', totalDomains);
 
-  const { data: expiringAssets } = await supabase
+  const { count: totalHosting } = await client
+    .from('hosting')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'active')
+  const { count: totalVps } = await client
+    .from('vps')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'active')
+  const { count: totalWebsites } = await client
+    .from('websites')
+    .select('*', { count: 'exact', head: true })
+    .eq('status', 'active')
+
+  return {
+    total_domains: Number(totalDomains) || 0,
+    total_hosting: totalHosting || 0,
+    total_vps: totalVps || 0,
+    total_websites: totalWebsites || 0,
+  }
+}
+
+async function getExpiringAssets(client: any) {
+  const { data } = await client
     .from('expiring_assets')
     .select('*')
     .order('days_until_expiry', { ascending: true })
     .limit(10)
+  return data || []
+}
 
-  const { data: recentActivities } = await supabase
+async function getRecentActivities(client: any) {
+  const { data } = await client
     .from('activity_logs')
     .select('*, staff(name)')
     .order('created_at', { ascending: false })
     .limit(10)
-
-  return { stats, expiringAssets, recentActivities }
+  return data || []
 }
 
 export default async function DashboardPage() {
   const user = await requireAuth()
-  let { stats, expiringAssets, recentActivities } = await getDashboardStats()
+  const supabase = await createClient()
 
-  if (!stats) {
-    stats = { total_domains: 0, total_hosting: 0, total_vps: 0, total_websites: 0 } as any
-  }
-
-  // If any stat is zero, recalculate directly to ensure accuracy
-  const supabaseCount = await createClient()
-  if (!stats.total_domains) {
-    const { data: rpcRes } = await supabaseCount.rpc('total_domains_active')
-    let domainCount = 0
-    if (Array.isArray(rpcRes)) {
-      const first = rpcRes[0] as any
-      domainCount = Number(first?.total_domains_active ?? 0)
-    } else if (rpcRes !== null && rpcRes !== undefined) {
-      domainCount = Number(rpcRes)
-    }
-    stats.total_domains = domainCount
-  }
-  if (!stats.total_hosting) {
-    const { count } = await supabaseCount
-      .from('hosting')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active')
-    stats.total_hosting = count || 0
-  }
-  if (!stats.total_vps) {
-    const { count } = await supabaseCount
-      .from('vps')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active')
-    stats.total_vps = count || 0
-  }
-  if (!stats.total_websites) {
-    const { count } = await supabaseCount
-      .from('websites')
-      .select('*', { count: 'exact', head: true })
-      .eq('status', 'active')
-    stats.total_websites = count || 0
-  }
+  const stats = await getDashboardStats(supabase)
+  const expiringAssets = await getExpiringAssets(supabase)
+  const recentActivities = await getRecentActivities(supabase)
 
   // Fetch domain status counts (active, grace, expired)
-  const supabaseDomains = await createClient()
-  const { data: domainCounts } = await supabaseDomains.rpc('domain_status_counts')
+  const { data: domainCounts } = await supabase.rpc('domain_status_counts')
 
   const statusCounts = domainCounts as { active: number; grace: number; expired: number } | null
 
