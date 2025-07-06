@@ -1,0 +1,9 @@
+{
+  "routes": [
+    { "src": "/dashboard/settings", "dest": "/dashboard/settings" },
+    { "src": "/api/database/backup", "dest": "/api/database/backup" }
+  ],
+  "github": {
+    "silent": true
+  }
+} 
