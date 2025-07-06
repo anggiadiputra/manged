@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import RootClientProvider from "@/components/providers/root-client-provider";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -13,16 +14,17 @@ export const metadata: Metadata = {
   description: "Platform terpusat untuk mengelola domain, hosting, VPS, dan website perusahaan",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+interface RootLayoutProps {
+  children: React.ReactNode
+}
+
+export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="id">
+    <html lang="id" suppressHydrationWarning>
       <body className={`${inter.variable} font-sans antialiased`}>
         <RootClientProvider>
           {children}
+          <Analytics />
         </RootClientProvider>
       </body>
     </html>
