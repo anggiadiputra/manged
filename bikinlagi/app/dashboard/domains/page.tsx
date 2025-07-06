@@ -7,6 +7,13 @@ import Link from 'next/link'
 import { Plus } from 'lucide-react'
 import { Pagination } from '@/components/dashboard/pagination'
 
+export const dynamic = 'force-dynamic'
+
+// This function tells Next.js that this page has no dynamic params
+export async function generateStaticParams() {
+  return [];
+}
+
 const ITEMS_PER_PAGE = 10;
 
 async function getDomains(page: number) {
@@ -34,10 +41,18 @@ async function getDomains(page: number) {
   return { domains: mappedDomains, totalCount: count || 0 }
 }
 
-export default async function DomainsPage({ searchParams }: { searchParams: { page?: string } }) {
+interface DomainsPageProps {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function DomainsPage({ searchParams }: DomainsPageProps) {
   const user = await requireAuth()
   const canManage = canManageAssets(user.role)
-  const page = Number(searchParams?.page || 1);
+
+  const params = await searchParams;
+  const rawPage = params.page
+  const pageParam = Array.isArray(rawPage) ? rawPage[0] : rawPage
+  const page = Number(pageParam ?? '1');
   const { domains, totalCount } = await getDomains(page)
   
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);

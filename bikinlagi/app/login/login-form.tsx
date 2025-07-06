@@ -103,6 +103,9 @@ export function LoginForm() {
           }
         }
 
+        // Update last_login timestamp via RPC (no RLS issues)
+        await supabase.rpc('update_last_login')
+
         toast({
           title: 'Berhasil',
           description: 'Login berhasil!',

@@ -32,7 +32,6 @@ async function getDashboardStats(client: any) {
   if (domainError) {
     console.error('Error fetching total domains:', domainError)
   }
-  console.log('Raw total domains data from RPC:', totalDomains);
 
   const { count: totalHosting } = await client
     .from('hosting')
