@@ -88,7 +88,7 @@ export function AddDomainForm({ onSuccess }: { onSuccess?: () => void }) {
         created_on: whois['Created On'] ? new Date(whois['Created On']).toISOString() : null,
         last_update_on: whois['Last Update On'] ? new Date(whois['Last Update On']).toISOString() : null,
         expiry_date: expiryDate,
-        status: whois['Status'] || null,
+        status: 'active',
         nameserver_1,
         nameserver_2,
         nameserver_3: whois['Nameserver 3'] || null,
