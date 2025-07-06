@@ -10,12 +10,9 @@ import {
   Layout, 
   Users, 
   LogOut,
-  Menu,
-  X,
   Home
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { useToast } from '@/hooks/use-toast'
@@ -26,7 +23,6 @@ interface SidebarProps {
 
 export function Sidebar({ userRole }: SidebarProps) {
   const pathname = usePathname()
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const router = useRouter()
   const { toast } = useToast()
   const supabase = createClient()
@@ -59,22 +55,8 @@ export function Sidebar({ userRole }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile menu button */}
-      <div className="lg:hidden fixed top-4 left-4 z-50">
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        >
-          {isMobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </Button>
-      </div>
-
-      {/* Sidebar */}
-      <div className={cn(
-        "fixed inset-y-0 left-0 z-40 w-64 bg-gray-900 text-gray-200 border-r border-gray-800 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
-        isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
-      )}>
+      {/* --- DESKTOP SIDEBAR --- */}
+      <div className="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:inset-y-0 lg:z-50 bg-gray-900 text-gray-200 border-r border-gray-800">
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-center h-16 px-4 border-b border-gray-800">
             <h2 className="text-lg font-semibold text-white">Asset Manager</h2>
@@ -93,7 +75,6 @@ export function Sidebar({ userRole }: SidebarProps) {
                       ? "bg-blue-600 text-white"
                       : "text-gray-400 hover:bg-gray-800 hover:text-white"
                   )}
-                  onClick={() => setIsMobileMenuOpen(false)}
                 >
                   <Icon className="mr-3 h-5 w-5" />
                   {item.name}
@@ -115,13 +96,34 @@ export function Sidebar({ userRole }: SidebarProps) {
         </div>
       </div>
 
-      {/* Mobile overlay */}
-      {isMobileMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
-          onClick={() => setIsMobileMenuOpen(false)}
-        />
-      )}
+      {/* --- MOBILE BOTTOM NAV --- */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-gray-900 border-t border-gray-800 z-50">
+        <nav className="flex justify-around py-2">
+          {navigation.map((item) => {
+            const Icon = item.icon
+            return (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={cn(
+                  "flex flex-col items-center justify-center w-full text-xs transition-colors",
+                  pathname === item.href ? "text-blue-500" : "text-gray-400 hover:text-white"
+                )}
+              >
+                <Icon className="h-5 w-5 mb-1" />
+                <span>{item.name}</span>
+              </Link>
+            )
+          })}
+           <button
+              onClick={handleLogout}
+              className="flex flex-col items-center justify-center w-full text-xs text-gray-400 hover:text-white transition-colors"
+            >
+              <LogOut className="h-5 w-5 mb-1" />
+              <span>Logout</span>
+            </button>
+        </nav>
+      </div>
     </>
   )
 } 

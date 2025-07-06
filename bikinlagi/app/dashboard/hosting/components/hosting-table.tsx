@@ -33,6 +33,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { canManageAssets, UserRole } from '@/lib/auth-utils'
+import { getExpiryStatus } from '@/lib/utils'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -43,6 +44,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { AddonDomainsDialog } from '@/components/dashboard/addon-domains-dialog'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface Hosting {
   id: string
@@ -156,7 +158,8 @@ export function HostingTable({ hosting, userRole }: HostingTableProps) {
         </div>
       </div>
 
-      <div className="rounded-md border">
+      {/* Desktop Table */}
+      <div className="hidden lg:block rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -179,7 +182,7 @@ export function HostingTable({ hosting, userRole }: HostingTableProps) {
               </TableRow>
             ) : (
               filteredHosting.map((item) => {
-                const daysUntilExpiry = getDaysUntilExpiry(item.expiry_date)
+                const expiryStatus = getExpiryStatus(item.expiry_date)
                 return (
                   <TableRow key={item.id}>
                     <TableCell className="font-medium">{item.provider}</TableCell>
@@ -189,9 +192,9 @@ export function HostingTable({ hosting, userRole }: HostingTableProps) {
                       {item.expiry_date ? (
                         <div>
                           <p>{format(new Date(item.expiry_date), 'dd MMM yyyy', { locale: id })}</p>
-                          {daysUntilExpiry !== null && daysUntilExpiry <= 30 && (
-                            <p className="text-xs text-red-600">
-                              {daysUntilExpiry} hari lagi
+                          {expiryStatus.label && (
+                            <p className={`text-xs ${expiryStatus.className}`}>
+                              {expiryStatus.label}
                             </p>
                           )}
                         </div>
@@ -204,11 +207,27 @@ export function HostingTable({ hosting, userRole }: HostingTableProps) {
                       }
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStatusColor(item.status) as 'default' | 'destructive' | 'secondary' | 'outline'}>
-                        {item.status === 'active' && 'Aktif'}
-                        {item.status === 'expired' && 'Kedaluwarsa'}
-                        {item.status === 'pending' && 'Pending'}
-                      </Badge>
+                      {(() => {
+                        let badgeClass = '';
+                        let statusLabel = 'Active';
+
+                        if (item.status === 'expired' || expiryStatus.label === 'Expired') {
+                          badgeClass = 'bg-red-600 text-white';
+                          statusLabel = 'Expired';
+                        } else if (expiryStatus.className.includes('orange')) {
+                          badgeClass = 'bg-orange-500 text-white';
+                          statusLabel = 'Warning';
+                        } else if (expiryStatus.className.includes('yellow')) {
+                          badgeClass = 'bg-yellow-400 text-black';
+                          statusLabel = 'Soon';
+                        }
+
+                        return (
+                          <Badge variant="outline" className={badgeClass}>
+                            {statusLabel}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <Button variant="outline" size="sm" onClick={()=>handleShowAddon(item.id)}>
@@ -250,6 +269,92 @@ export function HostingTable({ hosting, userRole }: HostingTableProps) {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden">
+        {filteredHosting.length === 0 ? (
+          <p className="text-center py-8 text-gray-500 col-span-full">
+            Tidak ada hosting ditemukan
+          </p>
+        ) : (
+          filteredHosting.map((item) => {
+            const expiryStatus = getExpiryStatus(item.expiry_date);
+            let badgeClass = '';
+            let statusLabel = 'Active';
+
+            if (item.status === 'expired' || expiryStatus.label === 'Expired') {
+              badgeClass = 'bg-red-600 text-white';
+              statusLabel = 'Expired';
+            } else if (expiryStatus.className.includes('orange')) {
+              badgeClass = 'bg-orange-500 text-white';
+              statusLabel = 'Warning';
+            } else if (expiryStatus.className.includes('yellow')) {
+              badgeClass = 'bg-yellow-400 text-black';
+              statusLabel = 'Soon';
+            }
+
+            return (
+              <Card key={item.id} className="flex flex-col">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">{item.provider}</CardTitle>
+                      <CardDescription>{item.package}</CardDescription>
+                    </div>
+                    <Badge variant="outline" className={badgeClass}>
+                      {statusLabel}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-grow space-y-2">
+                  <div>
+                    <p className="text-sm font-medium">Domain Utama</p>
+                    <p className="text-sm text-gray-600">{item.primary_domain || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Tanggal Kedaluwarsa</p>
+                    <div className="text-sm text-gray-600">
+                      {item.expiry_date ? (
+                        <>
+                          <span>{format(new Date(item.expiry_date), 'dd MMM yyyy', { locale: id })}</span>
+                          {expiryStatus.label && (
+                            <span className={`ml-2 ${expiryStatus.className}`}>
+                              ({expiryStatus.label})
+                            </span>
+                          )}
+                        </>
+                      ) : '-'}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Biaya Perpanjangan</p>
+                    <p className="text-sm text-gray-600">
+                      {item.renewal_cost ? `Rp ${item.renewal_cost.toLocaleString('id-ID')}` : '-'}
+                    </p>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between items-center">
+                   <Button variant="outline" size="sm" onClick={()=>handleShowAddon(item.id)}>
+                      Lihat Addon
+                   </Button>
+                   {canManage && (
+                    <div className="flex gap-2">
+                      <Link href={`/dashboard/hosting/${item.id}/edit`}>
+                        <Button size="sm" variant="outline">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                       <Button size="sm" variant="destructive" onClick={() => setDeleteId(item.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </div>
+                  )}
+                </CardFooter>
+              </Card>
+            )
+          })
+        )}
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

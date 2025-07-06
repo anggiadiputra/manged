@@ -51,6 +51,7 @@ import {
   AlertDialogFooter as CredentialDialogFooter,
   AlertDialogAction as CredentialDialogAction,
 } from '@/components/ui/alert-dialog'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface Website {
   id: string
@@ -142,7 +143,8 @@ export function WebsitesTable({ websites, userRole }: WebsitesTableProps) {
         </div>
       </div>
 
-      <div className="rounded-md border">
+      {/* Desktop Table */}
+      <div className="hidden lg:block rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -248,6 +250,63 @@ export function WebsitesTable({ websites, userRole }: WebsitesTableProps) {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden">
+        {filteredWebsites.length === 0 ? (
+          <p className="text-center py-8 text-gray-500 col-span-full">
+            Tidak ada website ditemukan
+          </p>
+        ) : (
+          filteredWebsites.map((website) => (
+            <Card key={website.id} className="flex flex-col">
+              <CardHeader>
+                <CardTitle
+                  className="text-lg cursor-pointer text-blue-600 hover:underline"
+                  onClick={() => {
+                    setCopiedField(null)
+                    setCred({
+                      username: website.admin_username || '-',
+                      password: website.admin_password || '-',
+                    })
+                  }}
+                >
+                  {website.domain}
+                </CardTitle>
+                <CardDescription>{website.cms || 'No CMS'}</CardDescription>
+              </CardHeader>
+              <CardContent className="flex-grow space-y-2">
+                <div>
+                  <p className="text-sm font-medium">Hosting/VPS</p>
+                  <p className="text-sm text-gray-600">
+                    {website.hosting ? `${website.hosting.provider} (${website.hosting.package})` 
+                    : website.vps ? `${website.vps.provider} (VPS)` 
+                    : '-'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">IP Address</p>
+                  <p className="text-sm text-gray-600">{website.ip_address || '-'}</p>
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-end gap-2">
+                {canManage && (
+                  <>
+                    <Link href={`/dashboard/websites/${website.id}/edit`}>
+                      <Button size="sm" variant="outline">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                    <Button size="sm" variant="destructive" onClick={() => setDeleteId(website.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </CardFooter>
+            </Card>
+          ))
+        )}
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

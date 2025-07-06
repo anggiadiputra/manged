@@ -47,6 +47,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
+import { getExpiryStatus } from '@/lib/utils'
 
 interface Vps {
   id: string
@@ -149,7 +151,8 @@ export function VpsTable({ vps, userRole }: VpsTableProps) {
         </div>
       </div>
 
-      <div className="rounded-md border">
+      {/* Desktop Table */}
+      <div className="hidden lg:block rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -170,7 +173,7 @@ export function VpsTable({ vps, userRole }: VpsTableProps) {
               </TableRow>
             ) : (
               filteredVps.map((vpsItem) => {
-                const daysUntilExpiry = getDaysUntilExpiry(vpsItem.expiry_date)
+                const expiryStatus = getExpiryStatus(vpsItem.expiry_date)
                 
                 return (
                   <TableRow key={vpsItem.id}>
@@ -194,9 +197,9 @@ export function VpsTable({ vps, userRole }: VpsTableProps) {
                       {vpsItem.expiry_date ? (
                         <div>
                           <p>{format(new Date(vpsItem.expiry_date), 'dd MMM yyyy', { locale: id })}</p>
-                          {daysUntilExpiry !== null && daysUntilExpiry <= 30 && (
-                            <p className="text-xs text-red-600">
-                              {daysUntilExpiry} hari lagi
+                          {expiryStatus.label && (
+                            <p className={`text-xs ${expiryStatus.className}`}>
+                              {expiryStatus.label}
                             </p>
                           )}
                         </div>
@@ -209,11 +212,27 @@ export function VpsTable({ vps, userRole }: VpsTableProps) {
                       }
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStatusColor(vpsItem.status) as 'default' | 'destructive' | 'secondary' | 'outline'}>
-                        {vpsItem.status === 'active' && 'Aktif'}
-                        {vpsItem.status === 'expired' && 'Kedaluwarsa'}
-                        {vpsItem.status === 'pending' && 'Pending'}
-                      </Badge>
+                      {(() => {
+                        let badgeClass = '';
+                        let statusLabel = 'Active';
+
+                        if (vpsItem.status === 'expired' || expiryStatus.label === 'Expired') {
+                          badgeClass = 'bg-red-600 text-white';
+                          statusLabel = 'Expired';
+                        } else if (expiryStatus.className.includes('orange')) {
+                          badgeClass = 'bg-orange-500 text-white';
+                          statusLabel = 'Warning';
+                        } else if (expiryStatus.className.includes('yellow')) {
+                          badgeClass = 'bg-yellow-400 text-black';
+                          statusLabel = 'Soon';
+                        }
+
+                        return (
+                          <Badge variant="outline" className={badgeClass}>
+                            {statusLabel}
+                          </Badge>
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -252,6 +271,97 @@ export function VpsTable({ vps, userRole }: VpsTableProps) {
             )}
           </TableBody>
         </Table>
+      </div>
+
+       {/* Mobile Card View */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden">
+        {filteredVps.length === 0 ? (
+          <p className="text-center py-8 text-gray-500 col-span-full">
+            Tidak ada VPS ditemukan
+          </p>
+        ) : (
+          filteredVps.map((vpsItem) => {
+            const expiryStatus = getExpiryStatus(vpsItem.expiry_date);
+            let badgeClass = '';
+            let statusLabel = 'Active';
+
+            if (vpsItem.status === 'expired' || expiryStatus.label === 'Expired') {
+              badgeClass = 'bg-red-600 text-white';
+              statusLabel = 'Expired';
+            } else if (expiryStatus.className.includes('orange')) {
+              badgeClass = 'bg-orange-500 text-white';
+              statusLabel = 'Warning';
+            } else if (expiryStatus.className.includes('yellow')) {
+              badgeClass = 'bg-yellow-400 text-black';
+              statusLabel = 'Soon';
+            }
+
+            return (
+              <Card key={vpsItem.id} className="flex flex-col">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">{vpsItem.provider}</CardTitle>
+                      <button type="button" className="text-sm text-blue-600 hover:underline" onClick={async()=>{
+                        setCredLoading(true);
+                        const { data } = await supabase.rpc('get_vps_credentials', { p_vps_id: vpsItem.id });
+                        if(data && data.length>0){
+                          const row = data[0];
+                          setCredVps({ ip: row.ip as string, user: row.root_user as string, pass: row.root_password as string });
+                        } else {
+                          setCredVps({ ip: vpsItem.ip_address, user: '-', pass: '-' });
+                        }
+                        setCredLoading(false);
+                      }}>
+                        {vpsItem.ip_address}
+                      </button>
+                    </div>
+                    <Badge variant="outline" className={badgeClass}>
+                      {statusLabel}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-grow space-y-2">
+                   <div>
+                    <p className="text-sm font-medium">Tanggal Kedaluwarsa</p>
+                    <div className="text-sm text-gray-600">
+                      {vpsItem.expiry_date ? (
+                        <>
+                          <span>{format(new Date(vpsItem.expiry_date), 'dd MMM yyyy', { locale: id })}</span>
+                          {expiryStatus.label && (
+                            <span className={`ml-2 ${expiryStatus.className}`}>
+                              ({expiryStatus.label})
+                            </span>
+                          )}
+                        </>
+                      ) : '-'}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Biaya Perpanjangan</p>
+                    <p className="text-sm text-gray-600">
+                      {vpsItem.renewal_cost ? `Rp ${vpsItem.renewal_cost.toLocaleString('id-ID')}` : '-'}
+                    </p>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-end gap-2">
+                   {canManage && (
+                    <>
+                      <Link href={`/dashboard/vps/${vpsItem.id}/edit`}>
+                        <Button size="sm" variant="outline">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </Link>
+                       <Button size="sm" variant="destructive" onClick={() => setDeleteId(vpsItem.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </>
+                  )}
+                </CardFooter>
+              </Card>
+            )
+          })
+        )}
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

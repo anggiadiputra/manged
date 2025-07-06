@@ -43,6 +43,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 
 interface Staff {
   id: string
@@ -137,7 +138,8 @@ export function StaffTable({ staff, currentUserId }: StaffTableProps) {
         </div>
       </div>
 
-      <div className="rounded-md border">
+      {/* Desktop Table */}
+      <div className="hidden lg:block rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -216,6 +218,57 @@ export function StaffTable({ staff, currentUserId }: StaffTableProps) {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden">
+        {filteredStaff.length === 0 ? (
+          <p className="text-center py-8 text-gray-500 col-span-full">
+            Tidak ada staff ditemukan
+          </p>
+        ) : (
+          filteredStaff.map((member) => (
+            <Card key={member.id} className="flex flex-col">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">{member.name}</CardTitle>
+                    <CardDescription>{member.email}</CardDescription>
+                  </div>
+                  <Badge variant={getRoleColor(member.role) as 'default' | 'destructive' | 'secondary' | 'outline'}>
+                    {getRoleLabel(member.role)}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="flex-grow space-y-2">
+                <div>
+                  <p className="text-sm font-medium">Terakhir Login</p>
+                  <p className="text-sm text-gray-600">
+                    {member.last_login ? format(new Date(member.last_login), 'dd MMM yyyy HH:mm', { locale: id }) : '-'}
+                  </p>
+                </div>
+                 <div>
+                  <p className="text-sm font-medium">Bergabung</p>
+                  <p className="text-sm text-gray-600">
+                    {format(new Date(member.created_at), 'dd MMM yyyy', { locale: id })}
+                  </p>
+                </div>
+              </CardContent>
+              <CardFooter className="flex justify-end gap-2">
+                <Link href={`/dashboard/staff/${member.id}/edit`}>
+                  <Button size="sm" variant="outline">
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </Link>
+                {member.id !== currentUserId && (
+                  <Button size="sm" variant="destructive" onClick={() => setDeleteId(member.id)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </CardFooter>
+            </Card>
+          ))
+        )}
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

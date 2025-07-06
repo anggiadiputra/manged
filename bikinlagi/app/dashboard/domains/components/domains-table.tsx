@@ -34,6 +34,7 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { canManageAssets, canUpdateWhois, UserRole } from '@/lib/auth-utils'
+import { getExpiryStatus } from '@/lib/utils'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +45,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 
 interface Domain {
@@ -192,7 +194,8 @@ export function DomainsTable({ domains, userRole }: DomainsTableProps) {
         </div>
       </div>
 
-      <div className="rounded-md border">
+      {/* Desktop Table */}
+      <div className="hidden lg:block rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -213,7 +216,7 @@ export function DomainsTable({ domains, userRole }: DomainsTableProps) {
               </TableRow>
             ) : (
               filteredDomains.map((domain) => {
-                const daysUntilExpiry = getDaysUntilExpiry(domain.expiry_date)
+                const expiryStatus = getExpiryStatus(domain.expiry_date)
                 return (
                   <TableRow key={domain.id}>
                     <TableCell className="font-medium">
@@ -240,9 +243,9 @@ export function DomainsTable({ domains, userRole }: DomainsTableProps) {
                       {domain.expiry_date ? (
                         <div>
                           <p>{format(new Date(domain.expiry_date), 'dd MMM yyyy', { locale: id })}</p>
-                          {daysUntilExpiry !== null && daysUntilExpiry <= 30 && (
-                            <p className="text-xs text-red-600">
-                              {daysUntilExpiry} hari lagi
+                          {expiryStatus.label && (
+                            <p className={`text-xs ${expiryStatus.className}`}>
+                              {expiryStatus.label}
                             </p>
                           )}
                         </div>
@@ -256,18 +259,25 @@ export function DomainsTable({ domains, userRole }: DomainsTableProps) {
                     </TableCell>
                     <TableCell>
                       {(() => {
-                        const daysUntilExpiry = getDaysUntilExpiry(domain.expiry_date);
-                        const badgeVariant = getStatusBadgeVariant(domain.status, daysUntilExpiry);
+                        const expiryStatus = getExpiryStatus(domain.expiry_date);
+                        
                         let badgeClass = '';
-                        if (badgeVariant === 'soon') {
-                          badgeClass = 'bg-yellow-400 text-black';
-                        }
-                        if (badgeVariant === 'destructive') {
+                        let statusLabel = 'Active';
+
+                        if (domain.status === 'expired' || expiryStatus.label === 'Expired') {
                           badgeClass = 'bg-red-600 text-white';
+                          statusLabel = 'Expired';
+                        } else if (expiryStatus.className.includes('orange')) {
+                          badgeClass = 'bg-orange-500 text-white';
+                          statusLabel = 'Warning';
+                        } else if (expiryStatus.className.includes('yellow')) {
+                          badgeClass = 'bg-yellow-400 text-black';
+                          statusLabel = 'Soon';
                         }
+
                         return (
-                          <Badge variant={badgeVariant === 'soon' ? 'outline' : badgeVariant as any} className={badgeClass}>
-                            {badgeVariant === 'destructive' ? 'Expired' : badgeVariant === 'soon' ? 'Soon' : 'Aktif'}
+                          <Badge variant="outline" className={badgeClass}>
+                            {statusLabel}
                           </Badge>
                         );
                       })()}
@@ -309,6 +319,83 @@ export function DomainsTable({ domains, userRole }: DomainsTableProps) {
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Mobile Card View */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:hidden">
+        {filteredDomains.length === 0 ? (
+          <p className="text-center py-8 text-gray-500 col-span-full">
+            Tidak ada domain ditemukan
+          </p>
+        ) : (
+          filteredDomains.map((domain) => {
+            const expiryStatus = getExpiryStatus(domain.expiry_date)
+            let statusLabel = 'Active';
+            let badgeClass = '';
+
+            if (domain.status === 'expired' || expiryStatus.label === 'Expired') {
+              badgeClass = 'bg-red-600 text-white';
+              statusLabel = 'Expired';
+            } else if (expiryStatus.className.includes('orange')) {
+              badgeClass = 'bg-orange-500 text-white';
+              statusLabel = 'Warning';
+            } else if (expiryStatus.className.includes('yellow')) {
+              badgeClass = 'bg-yellow-400 text-black';
+              statusLabel = 'Soon';
+            }
+
+            return (
+              <Card key={domain.id} className="flex flex-col">
+                <CardHeader>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">{domain.name}</CardTitle>
+                      <CardDescription>{domain.registrar || '-'}</CardDescription>
+                    </div>
+                    <Badge variant="outline" className={badgeClass}>
+                      {statusLabel}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-grow space-y-2">
+                  <div>
+                    <p className="text-sm font-medium">Tanggal Kedaluwarsa</p>
+                    <div className="text-sm text-gray-600">
+                      {domain.expiry_date ? (
+                        <>
+                          <span>{format(new Date(domain.expiry_date), 'dd MMM yyyy', { locale: id })}</span>
+                          {expiryStatus.label && (
+                            <span className={`ml-2 ${expiryStatus.className}`}>
+                              ({expiryStatus.label})
+                            </span>
+                          )}
+                        </>
+                      ) : '-'}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">Biaya Perpanjangan</p>
+                    <p className="text-sm text-gray-600">
+                      {domain.renewal_cost ? `Rp ${domain.renewal_cost.toLocaleString('id-ID')}` : '-'}
+                    </p>
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-end gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setSelectedDomain(domain)}>
+                    Detail
+                  </Button>
+                  {(canManage || canEditWhois) && (
+                    <Link href={`/dashboard/domains/${domain.id}/edit`}>
+                      <Button size="sm">
+                        <Edit className="mr-2 h-4 w-4" /> Edit
+                      </Button>
+                    </Link>
+                  )}
+                </CardFooter>
+              </Card>
+            )
+          })
+        )}
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
