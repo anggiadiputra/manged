@@ -33,7 +33,7 @@ export default async function EditWebsitePage({ params }: EditWebsitePageProps) 
   if (!website) {
     return <div>Website not found</div>
   }
-  
+
   return (
     <div className="container mx-auto py-10">
       <h1 className="text-2xl font-bold mb-8">Edit Website</h1>
