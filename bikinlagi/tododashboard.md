@@ -3,21 +3,21 @@
 > Menyelaraskan desain dashboard Career-style ke dalam sistem Manajemen Aset Digital (Domain, Hosting, VPS, Website).
 
 ## 🌐 Layout & Struktur
-- [ ] Update `app/dashboard/layout.tsx` menjadi 3-column flex (Sidebar, Content, Right Panel)
-- [ ] Refactor `components/dashboard/sidebar.tsx` agar sesuai desain baru
-- [ ] Tambah komponen `RightSidebar` untuk panel Interview/Reminder & Calendar
+- [x] Update `app/dashboard/layout.tsx` menjadi 3-column flex (Sidebar, Content, Right Panel)
+- [x] Refactor `components/dashboard/sidebar.tsx` agar sesuai desain baru
+- [x] Tambah komponen `RightSidebar` untuk panel Interview/Reminder & Calendar
 
 ## 📊 Data Summary Cards
-- [ ] Buat komponen `SummaryCard` (props: label, value, delta, color)
+- [x] Buat komponen `SummaryCard` (props: label, value, delta, color)
 - [ ] Hook `useDashboardStats()` untuk:
   - [ ] Total Domain Aktif
   - [ ] Hosting Kedaluwarsa ≤30 Hari
   - [ ] VPS Aktif
-- [ ] Render 3 kartu di `app/dashboard/page.tsx`
+- [x] Render 3 kartu di `app/dashboard/page.tsx`
 
 ## 📦 Applications → Domain Status Section
-- [ ] Komponen `DomainStatusBlock` (kategori & 3 status)
-- [ ] Query domain by status & kategori
+- [x] Komponen `DomainStatusBlock` (kategori & 3 status)
+- [x] Query domain by status & kategori
 
 ## 🍩 Distribusi Aset (Donut)
 - [ ] Install `react-chartjs-2` & `chart.js`
@@ -42,3 +42,12 @@
 ## 🚀 Deployment
 - [ ] Tambah dependensi baru ke `package.json`
 - [ ] Update README dengan instruksi setup chart & calendar 
+
+CREATE OR REPLACE FUNCTION public.total_domains_active()
+RETURNS bigint
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT COUNT(*) FROM public.domains WHERE status='active';
+$$;
+GRANT EXECUTE ON FUNCTION public.total_domains_active() TO authenticated, anon; 

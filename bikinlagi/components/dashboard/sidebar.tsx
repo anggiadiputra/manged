@@ -72,12 +72,12 @@ export function Sidebar({ userRole }: SidebarProps) {
 
       {/* Sidebar */}
       <div className={cn(
-        "fixed inset-y-0 left-0 z-40 w-64 bg-white border-r transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
+        "fixed inset-y-0 left-0 z-40 w-64 bg-gray-900 text-gray-200 border-r border-gray-800 transform transition-transform duration-200 ease-in-out lg:translate-x-0 lg:static lg:inset-0",
         isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex flex-col h-full">
-          <div className="flex items-center justify-center h-16 px-4 border-b">
-            <h2 className="text-lg font-semibold">Dashboard Aset Digital</h2>
+          <div className="flex items-center justify-center h-16 px-4 border-b border-gray-800">
+            <h2 className="text-lg font-semibold text-white">Asset Manager</h2>
           </div>
           
           <nav className="flex-1 px-4 py-4 space-y-1">
@@ -90,8 +90,8 @@ export function Sidebar({ userRole }: SidebarProps) {
                   className={cn(
                     "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
                     pathname === item.href
-                      ? "bg-gray-100 text-gray-900"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      ? "bg-blue-600 text-white"
+                      : "text-gray-400 hover:bg-gray-800 hover:text-white"
                   )}
                   onClick={() => setIsMobileMenuOpen(false)}
                 >
@@ -102,10 +102,10 @@ export function Sidebar({ userRole }: SidebarProps) {
             })}
           </nav>
 
-          <div className="p-4 border-t">
+          <div className="p-4 border-t border-gray-800">
             <Button 
-              variant="outline"
-              className="w-full justify-start"
+              variant="ghost"
+              className="w-full justify-start text-gray-400 hover:text-white"
               onClick={handleLogout}
             >
               <LogOut className="mr-3 h-4 w-4" />

@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge'
 import { Globe, Server, HardDrive, Layout, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { id } from 'date-fns/locale'
+import { SummaryCard } from '@/components/dashboard/summary-card'
+import { DomainStatusBlock } from '@/components/dashboard/domain-status-block'
 
 interface ExpiringAsset {
   asset_type: string
@@ -49,7 +51,52 @@ async function getDashboardStats() {
 
 export default async function DashboardPage() {
   const user = await requireAuth()
-  const { stats, expiringAssets, recentActivities } = await getDashboardStats()
+  let { stats, expiringAssets, recentActivities } = await getDashboardStats()
+
+  if (!stats) {
+    stats = { total_domains: 0, total_hosting: 0, total_vps: 0, total_websites: 0 } as any
+  }
+
+  // If any stat is zero, recalculate directly to ensure accuracy
+  const supabaseCount = await createClient()
+  if (!stats.total_domains) {
+    const { data: rpcRes } = await supabaseCount.rpc('total_domains_active')
+    let domainCount = 0
+    if (Array.isArray(rpcRes)) {
+      const first = rpcRes[0] as any
+      domainCount = Number(first?.total_domains_active ?? 0)
+    } else if (rpcRes !== null && rpcRes !== undefined) {
+      domainCount = Number(rpcRes)
+    }
+    stats.total_domains = domainCount
+  }
+  if (!stats.total_hosting) {
+    const { count } = await supabaseCount
+      .from('hosting')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'active')
+    stats.total_hosting = count || 0
+  }
+  if (!stats.total_vps) {
+    const { count } = await supabaseCount
+      .from('vps')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'active')
+    stats.total_vps = count || 0
+  }
+  if (!stats.total_websites) {
+    const { count } = await supabaseCount
+      .from('websites')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'active')
+    stats.total_websites = count || 0
+  }
+
+  // Fetch domain status counts (active, grace, expired)
+  const supabaseDomains = await createClient()
+  const { data: domainCounts } = await supabaseDomains.rpc('domain_status_counts')
+
+  const statusCounts = domainCounts as { active: number; grace: number; expired: number } | null
 
   const statCards = [
     {
@@ -91,25 +138,32 @@ export default async function DashboardPage() {
 
       {/* Statistics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statCards.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <Card key={stat.title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {stat.title}
-                </CardTitle>
-                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                  <Icon className={`h-4 w-4 ${stat.color}`} />
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stat.value}</div>
-              </CardContent>
-            </Card>
-          )
-        })}
+        {statCards.map((stat) => (
+          <SummaryCard
+            key={stat.title}
+            title={stat.title}
+            value={stat.value}
+            icon={stat.icon}
+            color={stat.color}
+            bgColor={stat.bgColor}
+          />
+        ))}
       </div>
+
+      {/* Domain Status Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Domain Status</CardTitle>
+          <CardDescription>Ringkasan status domain</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {statusCounts ? (
+            <DomainStatusBlock category="Semua Domain" counts={statusCounts} />
+          ) : (
+            <p className="text-sm text-gray-500">Data tidak tersedia</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Expiring Assets */}
       <Card>
